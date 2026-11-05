@@ -1,0 +1,9 @@
+.grid-range-selected {
+  background-color: rgba(100 150 255 / 35%) !important;
+  transition: none !important;
+}
+
+.grid-range-active {
+  /* outline: 2px solid #1a73e8;
+  outline-offset: -2px; */
+}
