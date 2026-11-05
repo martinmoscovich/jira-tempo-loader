@@ -95,23 +95,25 @@ Format: `PROJECT-Title` (e.g., `ABC-New Feature`)
 
 ## Google Sheets Format
 
-Your Google Sheets export should have these columns:
+Paste (or import) tab-separated rows: a date row, then one row per entry with
+Start, End, Duration, Ticket and Description. This is also the layout "copy to clipboard" exports.
 
 ```
-Fecha   Hora Inicio   Hora Fin   Ticket          Descripción        Título
-01/01   09:00        10:00      ABC-123         Fixed bug
-        10:00        11:00      ABC             New feature work   Feature Title
-        11:00        12:00      DEF-456         Review PR
-02/01   09:00        17:00      ABC             Continue feature   Feature Title
+01/01
+        09:00   10:00   1:00   ABC-123            Fixed bug
+        10:00   11:00   1:00   ABC-New Feature    New feature work
+        11:00   12:00   1:00   DEF-456 Review PR
+02/01   09:00   17:00   8:00   ABC                Continue feature
 ```
 
 **Format rules:**
-- First row is headers (will be skipped)
-- Date only needed once per day (empty cells use previous date)
-- Date format: `DD/MM` or `DD/MM/YYYY`
-- Time format: `HH:MM` (24-hour)
-- Ticket: existing key or new reference
-- Título column is optional
+- A header row is skipped
+- The date can be on its own row or in the first column of an entry row; later rows reuse it
+- Date format: `DD/MM` or `DD/MM/YYYY` (without a year, the current year is used)
+- Time format: `HH:MM` (24-hour); the Duration column is ignored
+- Ticket: an existing key, a project (`ABC`) or a project and title (`ABC-New Feature`)
+- `KEY-123 some text` in the ticket column uses the text as the description
+- Rows with an invalid time are kept with that time empty, so validation flags them
 
 ## Tips
 

@@ -10,18 +10,24 @@ import {
   Alert,
   FormControlLabel,
   Checkbox,
+  Link,
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { normalizeJiraUrl } from '../utils/jiraSite';
+import { JiraSetupHelpDialog } from './JiraSetupHelpDialog';
 
 export const AuthSetup: React.FC = () => {
-  const { login, authConfig, setConfig, logout } = useAuth();
+  const { login, authConfig, setConfig, logout, authError } = useAuth();
   const [jiraUrl, setJiraUrl] = useState(authConfig?.jiraUrl || '');
   const [clientId, setClientId] = useState(authConfig?.clientId || '');
   const [clientSecret, setClientSecret] = useState(authConfig?.clientSecret || '');
   const [rememberCredentials, setRememberCredentials] = useState(true);
   const [error, setError] = useState('');
   const [isAutoLoggingIn, setIsAutoLoggingIn] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  // Atlassian only redirects back to a callback URL registered in the OAuth app, so it must match exactly.
+  const redirectUri = `${window.location.origin}${window.location.pathname}`;
 
   // Check for mock mode query parameter and load/auto-submit saved credentials
   useEffect(() => {
@@ -40,7 +46,6 @@ export const AuthSetup: React.FC = () => {
 
       // Auto-login in mock mode
       setIsAutoLoggingIn(true);
-      const redirectUri = `${window.location.origin}${window.location.pathname}`;
       const config = {
         jiraUrl: '',
         clientId: 'mock-client-id',
@@ -67,9 +72,8 @@ export const AuthSetup: React.FC = () => {
           setRememberCredentials(true);
 
           // Auto-submit the form with saved credentials
-          const redirectUri = `${window.location.origin}${window.location.pathname}`;
           const config = {
-            jiraUrl: savedUrl,
+            jiraUrl: normalizeJiraUrl(savedUrl) ?? savedUrl,
             clientId: savedClientId,
             clientSecret: savedSecret,
             redirectUri,
@@ -95,10 +99,15 @@ export const AuthSetup: React.FC = () => {
       return;
     }
 
-    const redirectUri = `${window.location.origin}${window.location.pathname}`;
+    const siteUrl = normalizeJiraUrl(jiraUrl);
+    if (!siteUrl) {
+      setError('Enter your Jira site, e.g. https://your-company.atlassian.net');
+      return;
+    }
+    setJiraUrl(siteUrl);
 
     const config = {
-      jiraUrl,
+      jiraUrl: siteUrl,
       clientId,
       clientSecret,
       redirectUri,
@@ -107,7 +116,7 @@ export const AuthSetup: React.FC = () => {
     // Save or clear credentials based on checkbox
     if (rememberCredentials) {
       localStorage.setItem('jira_credentials', JSON.stringify({
-        jiraUrl,
+        jiraUrl: siteUrl,
         clientId,
         clientSecret,
       }));
@@ -178,12 +187,15 @@ export const AuthSetup: React.FC = () => {
                 Jira Tempo Timesheet
               </Typography>
               <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
-                Set up your Jira connection to get started
+                Set up your Jira connection to get started.{' '}
+                <Link component="button" type="button" variant="body2" onClick={() => setHelpOpen(true)}>
+                  How do I get these?
+                </Link>
               </Typography>
 
-              {error && (
-                <Alert severity="error" sx={{ mb: 2 }}>
-                  {error}
+              {(error || authError) && (
+                <Alert severity="error" sx={{ mb: 2 }} role="alert">
+                  {error || `Sign-in failed: ${authError}`}
                 </Alert>
               )}
 
@@ -245,9 +257,19 @@ export const AuthSetup: React.FC = () => {
 
               <Box sx={{ mt: 3 }}>
                 <Typography variant="caption" color="text.secondary">
-                  You need to create an OAuth app in Jira Cloud to get the Client ID and Client Secret.
+                  You need to create an OAuth app in Jira Cloud to get the Client ID and Client Secret.{' '}
+                  <Link component="button" type="button" variant="caption" onClick={() => setHelpOpen(true)}>
+                    Step-by-step instructions
+                  </Link>
                 </Typography>
               </Box>
+
+              <JiraSetupHelpDialog
+                open={helpOpen}
+                onClose={() => setHelpOpen(false)}
+                jiraUrl={jiraUrl}
+                redirectUri={redirectUri}
+              />
             </CardContent>
           </Card>
         </motion.div>

@@ -8,16 +8,18 @@
 
 ## OAuth Setup
 
-1. Go to https://developer.atlassian.com/console/myapps/
-2. Create a new app
-3. Add OAuth 2.0 (3LO) credentials
-4. Set the callback URL to: `http://localhost:5173/` for development or your production URL
-5. Add the following scopes:
-   - `read:jira-work`
-   - `write:jira-work`
-   - `read:jira-user`
-   - `offline_access`
-6. Copy the Client ID and Client Secret
+The sign-in screen has a **How do I get these?** link with these steps and the exact callback URL to copy.
+
+1. Go to https://developer.atlassian.com/console/myapps/ and choose **Create → OAuth 2.0 integration**
+2. **Permissions**:
+   - **Jira API** → Add → Configure → Edit scopes (Classic scopes): `read:jira-work`, `write:jira-work`, `read:jira-user`
+   - **User identity API** → Add (`read:me`)
+3. **Authorization** → OAuth 2.0 (3LO) → Configure: set the callback URL to the app URL exactly,
+   e.g. `http://localhost:5173/` for development or `https://<user>.github.io/<repo>/` on GitHub Pages
+4. **Settings**: copy the Client ID and Secret
+5. Optional: **Distribution → Sharing** lets other people sign in with your app
+
+`offline_access` (refresh tokens) is requested at sign-in and needs no setup in the console.
 
 ## Installation
 

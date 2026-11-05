@@ -29,3 +29,10 @@ Append-only. Format: failure mode → detection signal → prevention rule.
 - **Failure mode** (avoided): blindly retrying a POST after a timeout or 5xx can create the same worklog twice.
 - **Detection signal**: design review before implementing.
 - **Prevention rule**: auto-retry only responses that guarantee nothing was written (429). For ambiguous failures, check the server for the record first; if it cannot be checked, fail and tell the user to verify.
+
+## 2026-11-05: Tests written for a format the parser no longer reads
+
+- **Context**: 3 `googleSheets.test.ts` tests had failed since the first commit, which kept CI red and taught everyone to ignore it.
+- **Failure mode**: the tests (and `USAGE.md`) described an old paste layout without the Duration column and with a "Título" column the parser never supported.
+- **Detection signal**: CI red on every push and Dependabot PR; failures reproduced on the first commit.
+- **Prevention rule**: when a test fails, first decide which side is the source of truth (here the exporter, which writes the Duration column) and fix the other; keep a round-trip test (export then import) for any format the app both reads and writes. Never leave CI red.

@@ -1,4 +1,5 @@
 import { AuthConfig, AuthState } from '../types';
+import { pickSite } from './jiraSite';
 
 const AUTH_STORAGE_KEY = 'jira_tempo_auth';
 const CONFIG_STORAGE_KEY = 'jira_tempo_config';
@@ -81,11 +82,7 @@ export const handleOAuthCallback = async (code: string, config: AuthConfig): Pro
   }
 
   const resources = await resourcesResponse.json();
-  const cloudId = resources[0]?.id;
-
-  if (!cloudId) {
-    throw new Error('No accessible Jira sites found');
-  }
+  const cloudId = pickSite(resources, config.jiraUrl).id;
 
   let userResponse = await fetch(`https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/myself`, {
     headers: {

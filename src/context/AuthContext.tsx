@@ -24,6 +24,8 @@ interface AuthContextType {
   logout: () => void;
   setConfig: (config: AuthConfig) => void;
   refreshToken: () => Promise<void>;
+  /** Why the last OAuth sign-in failed, shown on the setup screen. */
+  authError: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,6 +36,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [jiraApi, setJiraApi] = useState<JiraApiService | null>(null);
   const [tempoApi, setTempoApi] = useState<TempoApiService | null>(null);
   const isProcessingCallback = useRef(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const refreshInFlight = useRef<Promise<string | null> | null>(null);
 
   const logout = () => {
@@ -103,6 +106,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     if (code && authConfig && !isMockMode && !isProcessingCallback.current && !authState.isAuthenticated) {
       isProcessingCallback.current = true;
+      setAuthError(null);
 
       handleOAuthCallback(code, authConfig)
         .then((newAuthState) => {
@@ -112,6 +116,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         })
         .catch((error) => {
           console.error('OAuth callback error:', error);
+          setAuthError(error instanceof Error ? error.message : String(error));
+          // Drop the used code from the URL so a reload does not retry it.
+          window.history.replaceState({}, document.title, window.location.pathname);
           isProcessingCallback.current = false;
         });
     }
@@ -191,6 +198,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         logout,
         setConfig,
         refreshToken,
+        authError,
       }}
     >
       {children}

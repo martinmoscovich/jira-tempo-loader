@@ -6,7 +6,7 @@ Mock mode allows you to test the application without needing access to a real Ji
 
 ## How to Enable Mock Mode
 
-When the application starts and prompts for Jira configuration, simply click the **"Usar Modo Demo (sin Jira)"** button.
+Open the app with `?mock=true` in the URL, for example `http://localhost:5173/?mock=true`.
 
 This will bypass the OAuth flow entirely and log you in with mock credentials automatically.
 
