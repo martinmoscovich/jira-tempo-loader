@@ -28,11 +28,13 @@ export const ValidateTicketsStep: React.FC<ValidateTicketsStepProps> = ({
   onContinue,
   onBack,
 }) => {
-  const { entries, setValidationGroups } = useTimesheet();
+  const { entries, setValidationGroups, updateEntry } = useTimesheet();
   const { jiraApi } = useAuth();
   const [validating, setValidating] = useState(false);
   const [validated, setValidated] = useState(false);
   const [error, setError] = useState('');
+  // Tickets that Jira knows under a new key (moved issue or renamed project), as [old, current].
+  const [renamedTickets, setRenamedTickets] = useState<Array<[string, string]>>([]);
 
   // Extract existing tickets and new tickets
   const existingTicketEntries = entries.filter((entry) => {
@@ -123,6 +125,18 @@ export const ValidateTicketsStep: React.FC<ValidateTicketsStepProps> = ({
         setValidating(false);
         return;
       }
+
+      // Use the current key for moved issues so worklogs go to the key Jira shows today.
+      const renames = new Map<string, string>();
+      issueKeys.forEach((key) => {
+        const currentKey = issuesValidation[key]?.key.toUpperCase();
+        if (currentKey && currentKey !== key) renames.set(key, currentKey);
+      });
+      existingTicketEntries.forEach((entry) => {
+        const currentKey = renames.get(entry.issue.trim().toUpperCase());
+        if (currentKey) updateEntry(entry.id, { issue: currentKey });
+      });
+      setRenamedTickets([...renames.entries()]);
 
       // All validations passed
       setValidationGroups(newTicketGroups);
@@ -254,6 +268,13 @@ export const ValidateTicketsStep: React.FC<ValidateTicketsStepProps> = ({
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {error}
+        </Alert>
+      )}
+
+      {renamedTickets.length > 0 && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          These tickets have a new key in Jira (moved or project renamed), so the entries now use it:{' '}
+          {renamedTickets.map(([oldKey, currentKey]) => `${oldKey} → ${currentKey}`).join(', ')}
         </Alert>
       )}
 

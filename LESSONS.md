@@ -36,3 +36,10 @@ Append-only. Format: failure mode → detection signal → prevention rule.
 - **Failure mode**: the tests (and `USAGE.md`) described an old paste layout without the Duration column and with a "Título" column the parser never supported.
 - **Detection signal**: CI red on every push and Dependabot PR; failures reproduced on the first commit.
 - **Prevention rule**: when a test fails, first decide which side is the source of truth (here the exporter, which writes the Duration column) and fix the other; keep a round-trip test (export then import) for any format the app both reads and writes. Never leave CI red.
+
+## 2026-11-05: Moved issues reported as "do not exist"
+
+- **Context**: after fixing the issue-key regex, `RL3D-8` was still reported as missing. The issue had been moved and is now `RLR-2`.
+- **Failure mode**: Jira search returns issues under their current key, and results were matched by that key, so any old key looked missing. The first diagnosis checked the ticket in the browser and missed that Jira redirected it to the new key.
+- **Detection signal**: user report after the first fix; a read-only API check showed `key IN ("RL3D-8")` returning `RLR-2`.
+- **Prevention rule**: never match Jira results back to requested keys by the returned key alone; look up unmatched keys directly (Jira resolves old keys). When verifying a ticket "exists", check the key the API returns, not just that a page loads.

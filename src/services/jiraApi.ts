@@ -85,22 +85,55 @@ export class JiraApiService extends RestApi {
       // Fill in found issues and update cache
       response.data.issues.forEach(issue => {
         const upperKey = issue.key.toUpperCase();
-        results[upperKey] = issue;
+        if (upperKey in results) results[upperKey] = issue;
         this.issueCache.set(upperKey, issue);
       });
 
+      // A moved issue (or one whose project key changed) is returned under its current key, so
+      // the old key looks missing. Look those up one by one: Jira resolves old keys and the
+      // returned issue carries the current key.
+      const unmatched = keysToFetch.filter(key => results[key] === null);
+      await Promise.all(unmatched.map(async key => {
+        const issue = await this.findIssue(key);
+        results[key] = issue;
+        if (issue) this.issueCache.set(key, issue);
+      }));
+
       return results;
     } catch (error) {
-      // Missing keys come back as 200 without the issue and are marked null above. Only a rejected
-      // JQL (400) is treated as "not found"; auth, network and server errors must surface instead
-      // of being reported as missing tickets.
+      // Missing keys come back as 200 without the issue and are handled above. Jira rejects the
+      // whole JQL (400) when one key's project does not exist, so then check each key on its own.
+      // Auth, network and server errors must surface instead of being reported as missing tickets.
       if (!axios.isAxiosError(error) || error.response?.status !== 400) {
         throw error;
       }
-      keysToFetch.forEach(key => {
-        results[key] = null;
-      });
+      await Promise.all(keysToFetch.map(async key => {
+        const issue = await this.findIssue(key);
+        results[key] = issue;
+        if (issue) this.issueCache.set(key, issue);
+      }));
       return results;
+    }
+  }
+
+  /** Returns the issue (with its current key), or null when Jira says it does not exist (404). */
+  private async findIssue(issueKey: string): Promise<JiraIssue | null> {
+    try {
+      return await this.getIssue(issueKey);
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) return null;
+      throw error;
+    }
+  }
+
+  /** True when the project exists (old project keys resolve too), false on 404. */
+  private async projectExists(projectKey: string): Promise<boolean> {
+    try {
+      await this.getProject(projectKey);
+      return true;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) return false;
+      throw error;
     }
   }
 
@@ -134,17 +167,24 @@ export class JiraApiService extends RestApi {
         results[key.toUpperCase()] = foundProjects.has(key.toUpperCase());
       });
 
+      // Not in the sample: an old project key (issues come back under the new one), a project
+      // without issues, or one beyond maxResults. Check those directly.
+      const unmatched = projectKeys.map(key => key.toUpperCase()).filter(key => !results[key]);
+      await Promise.all(unmatched.map(async key => {
+        results[key] = await this.projectExists(key);
+      }));
+
       return results;
     } catch (error) {
+      // Auth, network and server errors must surface instead of marking projects invalid.
+      if (!axios.isAxiosError(error) || error.response?.status !== 400) {
+        throw error;
+      }
       // If query fails, try individual requests as fallback
-      const promises = projectKeys.map(async (key) => {
-        try {
-          await this.getProject(key);
-          return { key: key.toUpperCase(), valid: true };
-        } catch {
-          return { key: key.toUpperCase(), valid: false };
-        }
-      });
+      const promises = projectKeys.map(async (key) => ({
+        key: key.toUpperCase(),
+        valid: await this.projectExists(key),
+      }));
 
       const individualResults = await Promise.all(promises);
       individualResults.forEach(({ key, valid }) => {
