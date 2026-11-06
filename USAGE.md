@@ -95,6 +95,8 @@ Format: `PROJECT-Title` (e.g., `ABC-New Feature`)
 
 ## Google Sheets Format
 
+The **(?)** next to **Paste from Clipboard** shows this format in the app, with an example to copy.
+
 Paste (or import) tab-separated rows: a date row, then one row per entry with
 Start, End, Duration, Ticket and Description. This is also the layout "copy to clipboard" exports.
 

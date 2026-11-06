@@ -1,11 +1,14 @@
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ContentPasteIcon from '@mui/icons-material/ContentPaste';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import {
   Alert,
   Box,
   Button,
+  IconButton,
   Snackbar,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import React, { useState } from 'react';
@@ -13,6 +16,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTimesheet } from '../../context/TimesheetContext';
 import { loadAuthConfig } from '../../utils/auth';
 import { exportToClipboard, parseClipboardData } from '../../utils/googleSheets';
+import { ClipboardFormatHelpDialog } from '../ClipboardFormatHelpDialog';
 import { TempoReportImport } from '../TempoReportImport';
 import { TimesheetTable } from '../TimesheetTable';
 
@@ -23,6 +27,7 @@ interface DataEntryStepProps {
 export const DataEntryStep: React.FC<DataEntryStepProps> = ({ onContinue }) => {
   const { entries, setEntries } = useTimesheet();
   const { authState } = useAuth();
+  const [formatHelpOpen, setFormatHelpOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -127,13 +132,26 @@ export const DataEntryStep: React.FC<DataEntryStepProps> = ({ onContinue }) => {
 
       {/* Import Actions - Fixed */}
       <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap', flexShrink: 0 }}>
-        <Button
-          variant="outlined"
-          startIcon={<ContentPasteIcon />}
-          onClick={handlePasteClick}
-        >
-          Paste from Clipboard
-        </Button>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Button
+            variant="outlined"
+            startIcon={<ContentPasteIcon />}
+            onClick={handlePasteClick}
+          >
+            Paste from Clipboard
+          </Button>
+          <Tooltip title="Clipboard format">
+            <IconButton
+              size="small"
+              onClick={() => setFormatHelpOpen(true)}
+              aria-label="Show the clipboard format"
+              sx={{ ml: 0.5 }}
+            >
+              <HelpOutlineIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+        <ClipboardFormatHelpDialog open={formatHelpOpen} onClose={() => setFormatHelpOpen(false)} />
 
         <TempoReportImport />
 
