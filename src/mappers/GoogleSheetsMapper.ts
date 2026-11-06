@@ -1,11 +1,13 @@
 import { format } from 'date-fns';
 import { TimeEntryInput } from '../types';
+import { AppLocale } from '../utils/locale';
 import { ISSUE_KEY_PREFIX_PATTERN } from '../utils/ticketValidation';
 import { IDataMapper } from './IDataMapper';
 
 /**
  * Mapper for Google Sheets TSV format
- * Format: Date on its own line, then time entries for that date
+ * Format: Date on its own line, then time entries for that date.
+ * Dates follow the selected locale: DD/MM[/YYYY] for 'es', MM/DD[/YYYY] for 'en-US'.
  *
  * Example:
  * 3/11
@@ -43,7 +45,7 @@ export class GoogleSheetsMapper implements IDataMapper {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
   }
 
-  importFromString(data: string): TimeEntryInput[] {
+  importFromString(data: string, locale: AppLocale = 'es'): TimeEntryInput[] {
     const lines = data.trim().split('\n');
     const entries: TimeEntryInput[] = [];
     let currentDate = '';
@@ -62,6 +64,21 @@ export class GoogleSheetsMapper implements IDataMapper {
       }
 
       return currentYear;
+    };
+
+    // Reads "a/b[/yyyy]" in the locale's order. A day or month out of range is an error rather than
+    // letting Date roll it over (e.g. "25/11" read as MM/DD would silently become a date in 2027).
+    const parseDate = (first: string, second: string, year: string | undefined, text: string): string => {
+      const [day, month] = locale === 'en-US' ? [Number(second), Number(first)] : [Number(first), Number(second)];
+      const fullYear = getYearForMonth(month, year);
+      const parsedDate = new Date(fullYear, month - 1, day);
+      if (month < 1 || month > 12 || parsedDate.getMonth() !== month - 1 || parsedDate.getDate() !== day) {
+        const expected = locale === 'en-US' ? 'MM/DD (EN-US)' : 'DD/MM (ES)';
+        throw new Error(
+          `"${text}" is not a valid date in ${expected} format. Check the date format selected at the top of the page.`
+        );
+      }
+      return format(parsedDate, 'yyyy-MM-dd');
     };
 
     // Detect if first line is a header
@@ -96,20 +113,16 @@ export class GoogleSheetsMapper implements IDataMapper {
 
       if (dateMatch && parts.length === 1) {
         // This is a date line (new format)
-        const [, day, month, year] = dateMatch;
-        const fullYear = getYearForMonth(parseInt(month), year);
-        const parsedDate = new Date(fullYear, parseInt(month) - 1, parseInt(day));
-        currentDate = format(parsedDate, 'yyyy-MM-dd');
+        const [text, first, second, year] = dateMatch;
+        currentDate = parseDate(first, second, year, text);
         return;
       }
 
       // Check if first column is a date in old format (date + data in same line)
       if (dateMatch && parts.length >= 5) {
         // Old format: Date, Start, End, Duration, Issue, Description
-        const [, day, month, year] = dateMatch;
-        const fullYear = getYearForMonth(parseInt(month), year);
-        const parsedDate = new Date(fullYear, parseInt(month) - 1, parseInt(day));
-        currentDate = format(parsedDate, 'yyyy-MM-dd');
+        const [text, first, second, year] = dateMatch;
+        currentDate = parseDate(first, second, year, text);
 
         // Process the rest of the line as a time entry
         const [, startTime, endTime, , issueCell = '', description = ''] = parts;
@@ -177,7 +190,7 @@ export class GoogleSheetsMapper implements IDataMapper {
     return entries;
   }
 
-  exportToString(entries: TimeEntryInput[]): string {
+  exportToString(entries: TimeEntryInput[], locale: AppLocale = 'es'): string {
     if (entries.length === 0) {
       return '';
     }
@@ -200,10 +213,10 @@ export class GoogleSheetsMapper implements IDataMapper {
       return `${hours}:${String(minutes).padStart(2, '0')}`;
     };
 
-    // Helper function to format date from YYYY-MM-DD to DD/MM
+    // Format YYYY-MM-DD as DD/MM ('es') or MM/DD ('en-US')
     const formatDate = (dateStr: string): string => {
       const [, month, day] = dateStr.split('-');
-      return `${day}/${month}`;
+      return locale === 'en-US' ? `${month}/${day}` : `${day}/${month}`;
     };
 
     entries.forEach(entry => {

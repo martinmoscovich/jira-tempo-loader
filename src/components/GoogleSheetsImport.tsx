@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLocale } from '../context/LocaleContext';
 import { useTimesheet } from '../context/TimesheetContext';
 import { loadAuthConfig } from '../utils/auth';
 import { exportToClipboard, parseClipboardData } from '../utils/googleSheets';
@@ -21,6 +22,7 @@ import { TicketValidationDialog } from './TicketValidationDialog';
 
 export const GoogleSheetsImport: React.FC = () => {
   const { entries, setEntries, updateEntry } = useTimesheet();
+  const { locale } = useLocale();
   const { authState, tempoApi } = useAuth();
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
@@ -34,7 +36,7 @@ export const GoogleSheetsImport: React.FC = () => {
   const handlePasteClick = async () => {
     try {
       const clipboardText = await navigator.clipboard.readText();
-      const parsedEntries = parseClipboardData(clipboardText);
+      const parsedEntries = parseClipboardData(clipboardText, locale);
       setEntries(parsedEntries);
       setTicketsValidated(false);
     } catch (err) {
@@ -48,7 +50,7 @@ export const GoogleSheetsImport: React.FC = () => {
 
   const handleCopyClick = async () => {
     try {
-      await exportToClipboard(entries);
+      await exportToClipboard(entries, locale);
       setSnackbar({
         open: true,
         message: 'Data copied to clipboard',

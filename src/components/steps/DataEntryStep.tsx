@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useLocale } from '../../context/LocaleContext';
 import { useTimesheet } from '../../context/TimesheetContext';
 import { loadAuthConfig } from '../../utils/auth';
 import { exportToClipboard, parseClipboardData } from '../../utils/googleSheets';
@@ -27,6 +28,7 @@ interface DataEntryStepProps {
 export const DataEntryStep: React.FC<DataEntryStepProps> = ({ onContinue }) => {
   const { entries, setEntries } = useTimesheet();
   const { authState } = useAuth();
+  const { locale } = useLocale();
   const [formatHelpOpen, setFormatHelpOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -41,7 +43,7 @@ export const DataEntryStep: React.FC<DataEntryStepProps> = ({ onContinue }) => {
   const handlePasteClick = async () => {
     try {
       const clipboardText = await navigator.clipboard.readText();
-      const parsedEntries = parseClipboardData(clipboardText);
+      const parsedEntries = parseClipboardData(clipboardText, locale);
       setEntries(parsedEntries);
       setSnackbar({
         open: true,
@@ -49,9 +51,11 @@ export const DataEntryStep: React.FC<DataEntryStepProps> = ({ onContinue }) => {
         severity: 'success',
       });
     } catch (err) {
+      // Date errors explain what is wrong; anything else gets the generic message.
+      const detail = err instanceof Error && err.message.includes('not a valid date') ? err.message : '';
       setSnackbar({
         open: true,
-        message: 'Error processing clipboard data. Check the format.',
+        message: detail || 'Error processing clipboard data. Check the format.',
         severity: 'error',
       });
     }
@@ -59,7 +63,7 @@ export const DataEntryStep: React.FC<DataEntryStepProps> = ({ onContinue }) => {
 
   const handleCopyClick = async () => {
     try {
-      await exportToClipboard(entries);
+      await exportToClipboard(entries, locale);
       setSnackbar({
         open: true,
         message: 'Data copied to clipboard',
@@ -151,7 +155,7 @@ export const DataEntryStep: React.FC<DataEntryStepProps> = ({ onContinue }) => {
             </IconButton>
           </Tooltip>
         </Box>
-        <ClipboardFormatHelpDialog open={formatHelpOpen} onClose={() => setFormatHelpOpen(false)} />
+        <ClipboardFormatHelpDialog open={formatHelpOpen} onClose={() => setFormatHelpOpen(false)} locale={locale} />
 
         <TempoReportImport />
 

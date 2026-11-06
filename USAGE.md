@@ -111,7 +111,9 @@ Start, End, Duration, Ticket and Description. This is also the layout "copy to c
 **Format rules:**
 - A header row is skipped
 - The date can be on its own row or in the first column of an entry row; later rows reuse it
-- Date format: `DD/MM` or `DD/MM/YYYY` (without a year, the current year is used)
+- Date format follows the ES / EN-US switch at the top: `DD/MM[/YYYY]` with ES, `MM/DD[/YYYY]` with EN-US
+  (without a year, the current year is used). Copy uses the same order. A date that is invalid in the selected
+  order is rejected instead of being guessed
 - Time format: `HH:MM` (24-hour); the Duration column is ignored
 - Ticket: an existing key, a project (`ABC`) or a project and title (`ABC-New Feature`)
 - `KEY-123 some text` in the ticket column uses the text as the description

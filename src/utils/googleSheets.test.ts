@@ -67,18 +67,48 @@ describe('parseGoogleSheetsData', () => {
   });
 });
 
-describe('GoogleSheetsMapper round trip', () => {
+describe('parseGoogleSheetsData with en-US dates (MM/DD)', () => {
+  it('reads the month first, with and without a year', () => {
+    const currentYear = new Date().getFullYear();
+    const entries = parseGoogleSheetsData(
+      `03/15
+\t09:00\t10:00\t1:00\tABC-1\tA
+11/04/2026\t09:00\t17:00\t8:00\tABC-2\tB`,
+      'en-US'
+    );
+    expect(entries.map((e) => e.date)).toEqual([`${currentYear}-03-15`, '2026-11-04']);
+  });
+
+  // With the wrong format selected, "15/03" would otherwise roll over into a date in 2027.
+  it('rejects a date that is not valid in the selected order', () => {
+    expect(() => parseGoogleSheetsData(`15/03\n\t09:00\t10:00\t1:00\tABC-1\tA`, 'en-US')).toThrow(
+      /"15\/03" is not a valid date in MM\/DD/
+    );
+    expect(() => parseGoogleSheetsData(`03/15\n\t09:00\t10:00\t1:00\tABC-1\tA`, 'es')).toThrow(
+      /"03\/15" is not a valid date in DD\/MM/
+    );
+    expect(() => parseGoogleSheetsData(`31/02/2025\t09:00\t10:00\t1:00\tABC-1\tA`)).toThrow(/not a valid date/);
+  });
+
+  it('defaults to es (DD/MM)', () => {
+    expect(parseGoogleSheetsData(`15/03/2025\n\t09:00\t10:00\t1:00\tABC-1\tA`)[0].date).toBe('2025-03-15');
+  });
+});
+
+describe.each(['es', 'en-US'] as const)('GoogleSheetsMapper round trip (%s)', (locale) => {
   it('imports what it exports', () => {
     const mapper = new GoogleSheetsMapper();
+    // Day > 12 so a swapped day/month cannot round-trip by accident.
     const inputs = [
-      { fecha: '2025-01-01', horaInicio: '09:00', horaFin: '10:30', ticket: 'ABC-1', descripcion: 'A' },
-      { fecha: '2025-01-01', horaInicio: '10:30', horaFin: '12:00', ticket: 'ABC', descripcion: 'B' },
-      { fecha: '2025-01-02', horaInicio: '09:00', horaFin: '17:00', ticket: 'DEF-2', descripcion: '' },
+      { fecha: '2025-03-15', horaInicio: '09:00', horaFin: '10:30', ticket: 'ABC-1', descripcion: 'A' },
+      { fecha: '2025-03-15', horaInicio: '10:30', horaFin: '12:00', ticket: 'ABC', descripcion: 'B' },
+      { fecha: '2025-03-16', horaInicio: '09:00', horaFin: '17:00', ticket: 'DEF-2', descripcion: '' },
     ];
-    const exported = mapper.exportToString(inputs);
+    const exported = mapper.exportToString(inputs, locale);
+    expect(exported.split('\n')[0]).toMatch(locale === 'es' ? /^15\/03\t/ : /^03\/15\t/);
     // Exported dates have no year, so compare against the year the importer assumes.
     const year = new Date().getFullYear();
     const withImportYear = inputs.map((i) => ({ ...i, fecha: i.fecha.replace('2025', String(year)) }));
-    expect(mapper.importFromString(exported)).toEqual(withImportYear);
+    expect(mapper.importFromString(exported, locale)).toEqual(withImportYear);
   });
 });
